@@ -1,0 +1,6 @@
+[submodule "libs/rebound"]
+	path = libs/rebound
+	url = https://github.com/linusepk/rebound.git
+[submodule "libs/glfw"]
+	path = libs/glfw
+	url = https://github.com/glfw/glfw.git
