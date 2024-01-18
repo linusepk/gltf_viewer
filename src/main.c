@@ -39,11 +39,16 @@ i32_t main(void) {
         return 1;
     }
 
-    HMM_Vec3 verts[] = {
-        HMM_V3(-0.5f, -0.5f, 0.0f),
-        HMM_V3( 0.5f, -0.5f, 0.0f),
-        HMM_V3(-0.5f,  0.5f, 0.0f),
-        HMM_V3( 0.5f,  0.5f, 0.0f),
+    typedef struct vert_t vert_t;
+    struct vert_t {
+        HMM_Vec3 position;
+        HMM_Vec4 color;
+    };
+    vert_t verts[] = {
+        {HMM_V3(-0.5f, -0.5f, 0.0f), HMM_V4(0.0f, 0.0f, 0.0f, 1.0f)},
+        {HMM_V3( 0.5f, -0.5f, 0.0f), HMM_V4(0.0f, 0.0f, 0.0f, 1.0f)},
+        {HMM_V3(-0.5f,  0.5f, 0.0f), HMM_V4(0.0f, 0.0f, 0.0f, 1.0f)},
+        {HMM_V3( 0.5f,  0.5f, 0.0f), HMM_V4(0.0f, 0.0f, 0.0f, 1.0f)},
     };
 
     u32_t indices[] = {
@@ -53,35 +58,47 @@ i32_t main(void) {
 
     gl_shader_t shader = gl_shader_file("resources/shaders/vert.glsl", "resources/shaders/frag.glsl");
 
-    u32_t vbo, ebo, vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    gl_vertex_buffer_t vb = gl_vertex_buffer_new(sizeof(verts), sizeof(HMM_Vec3), verts, GL_BUFFER_USAGE_STATIC);
+    gl_index_buffer_t ib = gl_index_buffer_new(sizeof(indices), indices, GL_BUFFER_USAGE_STATIC);
 
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+    gl_vertex_array_t va = gl_vertex_array_new();
+    gl_vertex_attribute_t layout[] = {
+        {GL_VERTEX_ATTRIBUTE_TYPE_VEC3, re_offsetof(vert_t, position)},
+        {GL_VERTEX_ATTRIBUTE_TYPE_VEC4, re_offsetof(vert_t, color)},
+    };
+    gl_vertex_array_attach_vertex_buffer(&va, vb, layout, re_arr_len(layout));
+    gl_vertex_array_attach_index_buffer(&va, ib);
 
-    glGenBuffers(1, &ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(HMM_Vec3), (const void *) 0);
-    glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    // u32_t vbo, ebo, vao;
+    // glGenVertexArrays(1, &vao);
+    // glBindVertexArray(vao);
+    //
+    // glGenBuffers(1, &vbo);
+    // glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    // glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+    //
+    // glGenBuffers(1, &ebo);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    //
+    // glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(HMM_Vec3), (const void *) 0);
+    // glEnableVertexAttribArray(0);
+    //
+    // glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    // glBindVertexArray(0);
 
     while (!glfwWindowShouldClose(window)) {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         gl_shader_use(&shader);
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        gl_vertex_array_draw_index(va, 6, 0);
+        // glBindVertexArray(vao);
+        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // glBindVertexArray(0);
+        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
