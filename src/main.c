@@ -6,13 +6,89 @@
 
 #include "abstraction/a_internal.h"
 
+#include "json.h"
+
 static void resize_callback(GLFWwindow *window, i32_t width, i32_t height) {
     (void) window;
     glViewport(0, 0, width, height);
 }
 
+static void json_print(json_object_t root, b8_t first_object, u32_t indent) {
+    if (first_object) {
+        re_log_debug("{");
+    }
+    indent += 4;
+
+    char space_buffer[512] = {0};
+    for (u32_t i = 0; i < indent; i++) {
+        space_buffer[i] = ' ';
+    }
+
+    for (u32_t i = 0; i < root.value.object.count; i++) {
+        re_str_t key = root.value.object.keys[i];
+        json_object_t child = root.value.object.values[i];
+
+        switch (child.type) {
+            case JSON_TYPE_STRING:
+                re_log_debug("%s\"%.*s\": \"%.*s\"",
+                        space_buffer,
+                        (i32_t) key.len, key.str,
+                        (i32_t) child.value.string.len, child.value.string.str);
+                break;
+
+            case JSON_TYPE_FLOATING:
+                re_log_debug("%s\"%.*s\": \"%f\"",
+                        space_buffer,
+                        (i32_t) key.len, key.str,
+                        child.value.floating);
+                break;
+
+            case JSON_TYPE_INTEGER:
+                re_log_debug("%s\"%.*s\": \"%d\"",
+                        space_buffer,
+                        (i32_t) key.len, key.str,
+                        child.value.integer);
+                break;
+
+            case JSON_TYPE_OBJECT:
+                re_log_debug("%s\"%.*s\": {",
+                        space_buffer,
+                        (i32_t) key.len, key.str);
+                json_print(root.value.object.values[i], false, indent);
+                break;
+
+            case JSON_TYPE_NULL:
+                re_log_debug("%s\"%.*s\": null",
+                        space_buffer,
+                        (i32_t) key.len, key.str);
+                break;
+
+            case JSON_TYPE_BOOL:
+                re_log_debug("%s\"%.*s\": %s",
+                        space_buffer,
+                        (i32_t) key.len, key.str,
+                        child.value.bool ? "true" : "false");
+                break;
+
+            default:
+                break;
+        }
+    }
+    space_buffer[indent - 4] = '\0';
+    re_log_debug("%s}", space_buffer);
+}
+
 i32_t main(void) {
     re_init();
+    re_arena_t *arena = re_arena_create(GB(4));
+
+    re_str_t json = re_file_read("test.json", arena);
+    json_object_t obj = json_parse(json);
+    re_log_debug("%d", obj.value.object.count);
+
+    json_print(obj, true, 0);
+
+    return 0;
 
     if (!glfwInit()) {
         re_log_error("Failed to init GLFW.");

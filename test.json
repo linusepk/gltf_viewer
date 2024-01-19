@@ -1,0 +1,11 @@
+{
+    "string": "value",
+    "bool": true,
+    "object": {
+        "null": null,
+        "nested": {
+            "whoo": "yeahh"
+        }
+    },
+    "something else": "wow"
+}

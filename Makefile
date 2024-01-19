@@ -6,7 +6,7 @@ IFLAGS := -Iinclude/ -Isrc/ -Ilibs/rebound/ -Ilibs/glfw/include/ -Ilibs/glad/inc
 LFLAGS := libs/rebound/rebound.o -Llibs/glfw/src/ -lglfw3 libs/glad/glad.o -lm
 DFLAGS :=
 
-debug: CFLAGS += -ggdb -Wall -Wextra -MD -MP
+debug: CFLAGS += -ggdb -Wall -MD -MP
 debug: DFLAGS += -DRE_DEBUG
 release: CFLAGS += -O3
 
