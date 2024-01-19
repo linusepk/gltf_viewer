@@ -9,9 +9,9 @@
             null,
             3.1415,
             1024,
-            -32
-        ]
+            -32,
+        ],
     },
     "num": 32,
-    "something else": "wow"
+    "something else": "wow",
 }

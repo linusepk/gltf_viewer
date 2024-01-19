@@ -146,7 +146,8 @@ i32_t main(void) {
     re_init();
     re_arena_t *arena = re_arena_create(GB(4));
 
-    re_str_t json = re_file_read("resources/models/box/Box.gltf", arena);
+    // re_str_t json = re_file_read("resources/models/box/Box.gltf", arena);
+    re_str_t json = re_file_read("test.json", arena);
     json_object_t obj = json_parse(json);
 
     json_print(obj, true, 0);

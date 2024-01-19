@@ -149,6 +149,11 @@ static json_object_t parse_array(parser_t *parser) {
         skip_whitespace(parser);
         if (peek(*parser, 0) == ',') {
             skip(parser, 1);
+            skip_whitespace(parser);
+            if (peek(*parser, 0) == ']') {
+                skip(parser, 1);
+                return obj;
+            }
             obj_i++;
             obj.value.array.count = obj_i + 1;
             obj.value.array.values = re_realloc(obj.value.array.values, obj.value.array.count * sizeof(json_object_t));
@@ -193,6 +198,11 @@ static json_object_t parse_object(parser_t *parser) {
         skip_whitespace(parser);
         if (peek(*parser, 0) == ',') {
             skip(parser, 1);
+            skip_whitespace(parser);
+            if (peek(*parser, 0) == '}') {
+                skip(parser, 1);
+                return obj;
+            }
             obj_i++;
             obj.value.object.count = obj_i + 1;
             obj.value.object.keys = re_realloc(obj.value.object.keys, obj.value.object.count * sizeof(re_str_t));
