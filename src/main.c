@@ -45,7 +45,7 @@ static void print_array(json_object_t arr, u32_t indent) {
                 break;
 
             case JSON_TYPE_OBJECT:
-                json_print(item, false, indent);
+                json_print(item, true, indent);
                 break;
 
             case JSON_TYPE_ARRAY:
@@ -69,12 +69,15 @@ static void print_array(json_object_t arr, u32_t indent) {
 }
 
 static void json_print(json_object_t root, b8_t first_object, u32_t indent) {
-    if (first_object) {
-        re_log_debug("{");
-    }
-    indent += 4;
-
     char space_buffer[512] = {0};
+    if (first_object) {
+        for (u32_t i = 0; i < indent; i++) {
+            space_buffer[i] = ' ';
+        }
+        re_log_debug("%s{", space_buffer);
+    }
+
+    indent += 4;
     for (u32_t i = 0; i < indent; i++) {
         space_buffer[i] = ' ';
     }
@@ -92,14 +95,14 @@ static void json_print(json_object_t root, b8_t first_object, u32_t indent) {
                 break;
 
             case JSON_TYPE_FLOATING:
-                re_log_debug("%s\"%.*s\": \"%f\"",
+                re_log_debug("%s\"%.*s\": %f",
                         space_buffer,
                         (i32_t) key.len, key.str,
                         child.value.floating);
                 break;
 
             case JSON_TYPE_INTEGER:
-                re_log_debug("%s\"%.*s\": \"%d\"",
+                re_log_debug("%s\"%.*s\": %d",
                         space_buffer,
                         (i32_t) key.len, key.str,
                         child.value.integer);
