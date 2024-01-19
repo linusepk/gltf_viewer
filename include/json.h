@@ -24,6 +24,10 @@ struct json_object_t {
         } object;
         f32_t floating;
         i32_t integer;
+        struct {
+            json_object_t *values;
+            u32_t count;
+        } array;
         b8_t bool;
         void *null;
     } value;

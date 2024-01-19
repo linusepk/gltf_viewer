@@ -13,6 +13,61 @@ static void resize_callback(GLFWwindow *window, i32_t width, i32_t height) {
     glViewport(0, 0, width, height);
 }
 
+static void json_print(json_object_t root, b8_t first_object, u32_t indent);
+
+static void print_array(json_object_t arr, u32_t indent) {
+    char space_buffer[512] = {0};
+    for (u32_t i = 0; i < indent; i++) {
+        space_buffer[i] = ' ';
+    }
+
+    for (u32_t i = 0; i < arr.value.array.count; i++) {
+        json_object_t item = arr.value.array.values[i];
+
+        switch (item.type) {
+            case JSON_TYPE_STRING:
+                re_log_debug("%s\"%.*s\"",
+                        space_buffer,
+                        (i32_t) item.value.string.len,
+                        item.value.string.str);
+                break;
+
+            case JSON_TYPE_FLOATING:
+                re_log_debug("%s%f",
+                        space_buffer,
+                        item.value.floating);
+                break;
+
+            case JSON_TYPE_INTEGER:
+                re_log_debug("%s%d",
+                        space_buffer,
+                        item.value.integer);
+                break;
+
+            case JSON_TYPE_OBJECT:
+                json_print(item, false, indent);
+                break;
+
+            case JSON_TYPE_ARRAY:
+                re_log_debug("%s[", space_buffer);
+                print_array(item, indent + 4);
+                re_log_debug("%s]", space_buffer);
+                break;
+
+            case JSON_TYPE_BOOL:
+                re_log_debug("%s%s",
+                        space_buffer,
+                        item.value.bool ? "true" : "false");
+                break;
+
+            case JSON_TYPE_NULL:
+                re_log_debug("%snull",
+                        space_buffer);
+                break;
+        }
+    }
+}
+
 static void json_print(json_object_t root, b8_t first_object, u32_t indent) {
     if (first_object) {
         re_log_debug("{");
@@ -57,10 +112,12 @@ static void json_print(json_object_t root, b8_t first_object, u32_t indent) {
                 json_print(root.value.object.values[i], false, indent);
                 break;
 
-            case JSON_TYPE_NULL:
-                re_log_debug("%s\"%.*s\": null",
+            case JSON_TYPE_ARRAY:
+                re_log_debug("%s\"%.*s\": [",
                         space_buffer,
                         (i32_t) key.len, key.str);
+                print_array(child, indent + 4);
+                re_log_debug("%s]", space_buffer);
                 break;
 
             case JSON_TYPE_BOOL:
@@ -70,10 +127,14 @@ static void json_print(json_object_t root, b8_t first_object, u32_t indent) {
                         child.value.bool ? "true" : "false");
                 break;
 
-            default:
+            case JSON_TYPE_NULL:
+                re_log_debug("%s\"%.*s\": null",
+                        space_buffer,
+                        (i32_t) key.len, key.str);
                 break;
         }
     }
+
     space_buffer[indent - 4] = '\0';
     re_log_debug("%s}", space_buffer);
 }
@@ -82,9 +143,8 @@ i32_t main(void) {
     re_init();
     re_arena_t *arena = re_arena_create(GB(4));
 
-    re_str_t json = re_file_read("test.json", arena);
+    re_str_t json = re_file_read("resources/models/box/Box.gltf", arena);
     json_object_t obj = json_parse(json);
-    re_log_debug("%d", obj.value.object.count);
 
     json_print(obj, true, 0);
 

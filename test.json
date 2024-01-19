@@ -3,9 +3,15 @@
     "bool": true,
     "object": {
         "null": null,
-        "nested": {
-            "whoo": "yeahh"
-        }
+        "array": [
+            "string",
+            false,
+            null,
+            3.1415,
+            1024,
+            -32
+        ]
     },
+    "num": 32,
     "something else": "wow"
 }

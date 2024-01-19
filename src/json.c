@@ -1,4 +1,5 @@
 #include "json.h"
+#include <stdlib.h>
 
 static b8_t is_digit(char c) {
     return c >= '0' && c <= '9';
@@ -75,6 +76,39 @@ static json_object_t parse_null(parser_t *parser) {
     return (json_object_t) {JSON_TYPE_NULL, .value.null = NULL};
 }
 
+static json_object_t parse_array(parser_t *parser);
+
+static json_object_t parse_number(parser_t *parser) {
+    skip_whitespace(parser);
+
+    json_object_t obj = {
+        .type = JSON_TYPE_INTEGER,
+    };
+    u32_t start = parser->i;
+    while (is_digit(peek(*parser, 0)) || peek(*parser, 0) == '-' || peek(*parser, 0) == '.') {
+        if (peek(*parser, 0) == '.') {
+            obj.type = JSON_TYPE_FLOATING;
+        }
+        skip(parser, 1);
+    }
+    u32_t end = parser->i - 1;
+
+    re_str_t num_str = re_str_sub(parser->buffer, start, end);
+
+    switch (obj.type) {
+        case JSON_TYPE_INTEGER:
+            obj.value.integer = atoi((const char *) num_str.str);
+            break;
+        case JSON_TYPE_FLOATING:
+            obj.value.floating = atof((const char *) num_str.str);
+            break;
+        default:
+            break;
+    }
+
+    return obj;
+}
+
 static json_object_t parse_value(parser_t *parser) {
     skip_whitespace(parser);
 
@@ -84,20 +118,47 @@ static json_object_t parse_value(parser_t *parser) {
         case '{':
             return parse_object(parser);
         case '[':
-            re_log_debug("Arrays unsupported.");
-            break;
+            return parse_array(parser);
         case 't':
         case 'f':
             return parse_bool(parser);
         case 'n':
             return parse_null(parser);
         default:
-            re_log_error("%u:%u: Unrecognized value.", parser->y, parser->x);
-            break;
+            return parse_number(parser);
     }
 
     return (json_object_t) {0};
 }
+
+static json_object_t parse_array(parser_t *parser) {
+    // Skip the [
+    skip(parser, 1);
+
+    json_object_t obj = {
+        .type = JSON_TYPE_ARRAY,
+        .value.array.count = 1,
+    };
+    obj.value.array.values = re_malloc(obj.value.array.count * sizeof(json_object_t));
+
+    u32_t obj_i = 0;
+    while (peek(*parser, 0) != ']') {
+        skip_whitespace(parser);
+        obj.value.array.values[obj_i] = parse_value(parser);
+
+        skip_whitespace(parser);
+        if (peek(*parser, 0) == ',') {
+            skip(parser, 1);
+            obj_i++;
+            obj.value.array.count = obj_i + 1;
+            obj.value.array.values = re_realloc(obj.value.array.values, obj.value.array.count * sizeof(json_object_t));
+        }
+    }
+    skip(parser, 1);
+
+    return obj;
+}
+
 
 static json_object_t parse_object(parser_t *parser) {
     // Skip the {
