@@ -337,3 +337,34 @@ b8_t json_bool(json_object_t obj) {
 
     return obj.value.bool;
 }
+
+json_object_t json_path(json_object_t obj, re_str_t path) {
+    json_object_t final = obj;
+
+    for (u32_t i = 0; path.str[i] != '\0';) {
+        // Array index
+        if (path.str[i] == '[') {
+            u32_t start = i;
+            for (; path.str[i] != ']'; i++);
+            u32_t end = i;
+            i++;
+            re_str_t idx_str = re_str_sub(path, start, end - 1);
+            u32_t idx = atoi((const char *) idx_str.str);
+            final = json_array(final, idx);
+            continue;
+        }
+
+        if (path.str[i] == '/') {
+            i++;
+        }
+
+        u32_t start = i;
+        for (; path.str[i] != '/' && path.str[i] != '[' && path.str[i] != '\0'; i++);
+        u32_t end = i;
+
+        re_str_t key = re_str_sub(path, start, end - 1);
+        final = json_object(final, key);
+    }
+
+    return final;
+}

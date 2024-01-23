@@ -157,10 +157,7 @@ i32_t main(void) {
     re_str_t json = re_file_read("resources/models/box/Box.gltf", arena);
     // re_str_t json = re_file_read("test.json", arena);
     json_object_t obj = json_parse(json);
-    re_log_debug("%d", obj.value.error.type);
-    re_log_debug("%d", obj.value.error.line);
-    re_log_debug("%d", obj.value.error.offset);
-    json_print(obj, true, 0);
+    // json_print(obj, true, 0);
 
     json_object_t meshes = json_object(obj, re_str_lit("meshes"));
     json_object_t mesh = json_array(meshes, 0);
@@ -169,6 +166,10 @@ i32_t main(void) {
     json_object_t normal = json_object(attributes, re_str_lit("POSITION"));
     i32_t norm = json_int(normal);
     re_log_debug("%d", norm);
+
+    json_object_t value = json_path(obj, re_str_lit("meshes[0]/primitives[0]/attributes/NORMAL"));
+    i32_t val = json_int(value);
+    re_log_debug("%d", val);
 
     return 0;
 

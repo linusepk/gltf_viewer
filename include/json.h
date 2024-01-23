@@ -58,3 +58,5 @@ extern f32_t json_number(json_object_t obj);
 extern json_object_t json_object(json_object_t obj, re_str_t key);
 extern json_object_t json_array(json_object_t obj, u32_t index);
 extern b8_t json_bool(json_object_t obj);
+
+extern json_object_t json_path(json_object_t obj, re_str_t path);
