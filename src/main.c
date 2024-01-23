@@ -64,6 +64,10 @@ static void print_array(json_object_t arr, u32_t indent) {
                 re_log_debug("%snull",
                         space_buffer);
                 break;
+
+            case JSON_TYPE_ERROR:
+                re_log_debug("Error");
+                break;
         }
     }
 }
@@ -135,6 +139,10 @@ static void json_print(json_object_t root, b8_t first_object, u32_t indent) {
                         space_buffer,
                         (i32_t) key.len, key.str);
                 break;
+
+            case JSON_TYPE_ERROR:
+                re_log_debug("Error");
+                break;
         }
     }
 
@@ -146,11 +154,21 @@ i32_t main(void) {
     re_init();
     re_arena_t *arena = re_arena_create(GB(4));
 
-    // re_str_t json = re_file_read("resources/models/box/Box.gltf", arena);
-    re_str_t json = re_file_read("test.json", arena);
+    re_str_t json = re_file_read("resources/models/box/Box.gltf", arena);
+    // re_str_t json = re_file_read("test.json", arena);
     json_object_t obj = json_parse(json);
-
+    re_log_debug("%d", obj.value.error.type);
+    re_log_debug("%d", obj.value.error.line);
+    re_log_debug("%d", obj.value.error.offset);
     json_print(obj, true, 0);
+
+    json_object_t meshes = json_object(obj, re_str_lit("meshes"));
+    json_object_t mesh = json_array(meshes, 0);
+    json_object_t primitives = json_array(json_object(mesh, re_str_lit("primitives")), 0);
+    json_object_t attributes = json_object(primitives, re_str_lit("attributes"));
+    json_object_t normal = json_object(attributes, re_str_lit("POSITION"));
+    i32_t norm = json_int(normal);
+    re_log_debug("%d", norm);
 
     return 0;
 

@@ -2,7 +2,7 @@
     "string": "value",
     "bool": true,
     "object": {
-        "null": null,
+       "null": null,
         "array": [
             "string",
             false,
