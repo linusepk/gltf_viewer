@@ -69,7 +69,12 @@ static json_object_t parse_string(parser_t *parser) {
     // Skip the last letter and the ending quote.
     skip(parser, 2);
 
-    return (json_object_t) {JSON_TYPE_STRING, {re_str_sub(parser->buffer, start, end)}};
+    re_str_t sub = re_str_sub(parser->buffer, start, end);
+    u8_t *str = re_malloc(sub.len);
+    for (u32_t i = 0; i < sub.len; i++) {
+        str[i] = sub.str[i];
+    }
+    return (json_object_t) {JSON_TYPE_STRING, {re_str(str, sub.len)}};
 }
 
 static json_object_t parse_bool(parser_t *parser) {
@@ -270,6 +275,63 @@ json_object_t json_parse(re_str_t data) {
     }
 }
 
+static void json_free_array(json_object_t obj);
+
+static void json_free_object(json_object_t obj) {
+    if (obj.type != JSON_TYPE_OBJECT) {
+        return;
+    }
+
+    for (u32_t i = 0; i < obj.value.object.count; i++) {
+        switch (obj.value.object.values[i].type) {
+            case JSON_TYPE_OBJECT:
+                json_free_object(obj.value.object.values[i]);
+                break;
+            case JSON_TYPE_ARRAY:
+                json_free_array(obj.value.object.values[i]);
+                break;
+            case JSON_TYPE_STRING:
+                re_free(obj.value.object.values[i].value.string.str);
+                break;
+            default:
+                break;
+        }
+    }
+
+    re_free(obj.value.object.values);
+    re_free(obj.value.object.keys);
+}
+
+static void json_free_array(json_object_t obj) {
+    if (obj.type != JSON_TYPE_ARRAY) {
+        return;
+    }
+
+    for (u32_t i = 0; i < obj.value.array.count; i++) {
+        switch (obj.value.array.values[i].type) {
+            case JSON_TYPE_OBJECT:
+                json_free_object(obj.value.array.values[i]);
+                break;
+            case JSON_TYPE_ARRAY:
+                json_free_array(obj.value.array.values[i]);
+                break;
+            case JSON_TYPE_STRING:
+                re_free(obj.value.array.values[i].value.string.str);
+                break;
+            default:
+                break;
+        }
+    }
+
+    re_free(obj.value.array.values);
+}
+
+void json_free(json_object_t *root) {
+    json_free_object(*root);
+    json_free_array(*root);
+    *root = (json_object_t) {JSON_TYPE_NULL, {0}};
+}
+
 re_str_t json_string(json_object_t obj) {
     if (obj.type != JSON_TYPE_STRING) {
         return re_str_null;
@@ -368,3 +430,5 @@ json_object_t json_path(json_object_t obj, re_str_t path) {
 
     return final;
 }
+
+json_object_t json_path(json_object_t obj, re_str_t path);

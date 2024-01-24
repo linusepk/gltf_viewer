@@ -50,6 +50,7 @@ struct json_object_t {
 };
 
 extern json_object_t json_parse(re_str_t data);
+extern void json_free(json_object_t *root);
 
 extern re_str_t json_string(json_object_t obj);
 extern f32_t json_float(json_object_t obj);

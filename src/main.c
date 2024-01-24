@@ -171,6 +171,8 @@ i32_t main(void) {
     i32_t val = json_int(value);
     re_log_debug("%d", val);
 
+    json_free(&obj);
+
     return 0;
 
     if (!glfwInit()) {
