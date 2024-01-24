@@ -1,12 +1,12 @@
 BIN := bin/gltf_viewer
 
 CC := gcc
-CFLAGS := -std=gnu99
+CFLAGS := -std=c99
 IFLAGS := -Iinclude/ -Isrc/ -Ilibs/rebound/ -Ilibs/glfw/include/ -Ilibs/glad/include/ -Ilibs/HandmadeMath/
 LFLAGS := libs/rebound/rebound.o -Llibs/glfw/src/ -lglfw3 libs/glad/glad.o -lm
 DFLAGS :=
 
-debug: CFLAGS += -ggdb -Wall -MD -MP
+debug: CFLAGS += -ggdb -Wall -Wextra -Wno-missing-braces -MD -MP
 debug: DFLAGS += -DRE_DEBUG
 release: CFLAGS += -O3
 
