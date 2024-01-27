@@ -145,7 +145,8 @@ i32_t main(void) {
         return 1;
     }
 
-    gltf_model_t gltf_model = gltf_parse("resources/models/box/Box.gltf", arena);
+    // TODO: Infer bufferView target from accessors so we can have fresh avocado.
+    gltf_model_t gltf_model = gltf_parse("resources/models/suzanne/Suzanne.gltf", arena);
     model_t model = gltf_to_model(gltf_model, arena);
 
     gl_shader_t shader = gl_shader_file("resources/shaders/vert.glsl", "resources/shaders/frag.glsl");
@@ -161,8 +162,8 @@ i32_t main(void) {
         u32_t loc = glGetUniformLocation(shader.handle, "projection");
         glUniformMatrix4fv(loc, 1, false, &projection.Elements[0][0]);
 
-        HMM_Mat4 translation = HMM_Translate(HMM_V3(0.0f, 0.0f, 2.0f));
-        HMM_Mat4 rotation = HMM_Rotate_LH(re_os_get_time(), HMM_V3(1.0f, 1.0f, 1.0f));
+        HMM_Mat4 translation = HMM_Translate(HMM_V3(0.0f, 0.0f, 3.0f));
+        HMM_Mat4 rotation = HMM_Rotate_LH(re_os_get_time(), HMM_V3(0.0f, 1.0f, 0.0f));
         HMM_Mat4 scale = HMM_Scale(HMM_V3(1.0f, 1.0f, 1.0f));
 
         HMM_Mat4 transform = HMM_MulM4(translation, rotation);

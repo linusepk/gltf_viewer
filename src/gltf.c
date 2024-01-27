@@ -54,7 +54,7 @@ static gltf_buffer_view_t *parse_views(const json_object_t *root, re_arena_t *ar
             stride = json_int(json_stride);
         }
 
-        gltf_buffer_target target = 0;
+        gltf_buffer_target target = GLTF_BUFFER_TARGET_ARRAY;
         json_object_t json_target = json_object(view, re_str_lit("target"));
         if (json_offset.type != JSON_TYPE_ERROR) {
             target = json_int(json_target);

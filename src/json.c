@@ -113,7 +113,7 @@ static json_object_t parse_number(parser_t *parser) {
         .type = JSON_TYPE_INTEGER,
     };
     u32_t start = parser->i;
-    while (is_digit(peek(*parser, 0)) || peek(*parser, 0) == '-' || peek(*parser, 0) == '.') {
+    while (is_digit(peek(*parser, 0)) || peek(*parser, 0) == '-' || peek(*parser, 0) == '.' || peek(*parser, 0) == 'e' || peek(*parser, 0) == 'E') {
         if (peek(*parser, 0) == '.') {
             obj.type = JSON_TYPE_FLOATING;
         }
