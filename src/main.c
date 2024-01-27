@@ -14,6 +14,107 @@ static void resize_callback(GLFWwindow *window, i32_t width, i32_t height) {
     glViewport(0, 0, width, height);
 }
 
+typedef struct mesh_t mesh_t;
+struct mesh_t {
+    u32_t vao;
+    b8_t indexed;
+    u32_t ebo;
+    u32_t index_count;
+    u64_t index_offset;
+    u32_t index_type;
+};
+
+typedef struct model_t model_t;
+struct model_t {
+    u32_t *buffers;
+    u32_t buffer_count;
+    u32_t *vaos;
+    u32_t vao_count;
+
+    // There is one mesh per VAO.
+    mesh_t *meshes;
+};
+
+static void set_vertex_attribute(gltf_model_t model, u32_t *buffers, i32_t accessor, u32_t index) {
+    if (accessor < 0) {
+        return;
+    }
+
+    gltf_accessor_t acc = model.accessors[accessor];
+    gltf_buffer_view_t view = model.views[acc.view];
+    glBindBuffer(view.target, buffers[acc.view]);
+
+    u32_t count = 0;
+    switch (acc.type) {
+        case GLTF_ACCESSOR_TYPE_SCALAR: count = 1;  break;
+        case GLTF_ACCESSOR_TYPE_VEC2:   count = 2;  break;
+        case GLTF_ACCESSOR_TYPE_VEC3:   count = 3;  break;
+        case GLTF_ACCESSOR_TYPE_VEC4:   count = 4;  break;
+        case GLTF_ACCESSOR_TYPE_MAT2:   count = 4;  break;
+        case GLTF_ACCESSOR_TYPE_MAT3:   count = 9;  break;
+        case GLTF_ACCESSOR_TYPE_MAT4:   count = 16; break;
+    }
+
+    glVertexAttribPointer(
+            index,
+            count,
+            acc.comp_type,
+            acc.normalized,
+            view.stride,
+            (const void *) acc.offset);
+    glEnableVertexAttribArray(index);
+
+    glBindBuffer(view.target, 0);
+}
+
+model_t gltf_to_model(gltf_model_t model, re_arena_t *arena) {
+    model_t m = {0};
+
+    m.vao_count = model.mesh_count;
+    m.buffer_count = model.view_count;
+
+    m.buffers = re_arena_push(arena, m.buffer_count * sizeof(u32_t));
+    m.vaos = re_arena_push(arena, m.vao_count * sizeof(u32_t));
+    m.meshes = re_arena_push(arena, m.vao_count * sizeof(u32_t));
+
+    glGenBuffers(m.buffer_count, m.buffers);
+    glGenVertexArrays(m.vao_count, m.vaos);
+
+    for (u32_t i = 0; i < m.buffer_count; i++) {
+        gltf_buffer_view_t view = model.views[i];
+        re_str_t buffer = model.buffers[view.buffer];
+
+        glBindBuffer(view.target, m.buffers[i]);
+        glBufferData(view.target, view.length, buffer.str + view.offset, GL_STATIC_DRAW);
+        glBindBuffer(view.target, 0);
+    }
+
+    for (u32_t i = 0; i < m.vao_count; i++) {
+        u32_t vao = m.vaos[i];
+        glBindVertexArray(vao);
+
+        gltf_mesh_t mesh = model.meshes[i];
+
+        // Position
+        set_vertex_attribute(model, m.buffers, mesh.position_accessor, 0);
+        set_vertex_attribute(model, m.buffers, mesh.normal_accessor, 1);
+        set_vertex_attribute(model, m.buffers, mesh.uv_accessor, 2);
+
+        m.meshes[i].vao = vao;
+        if (mesh.indices_accessor >= 0) {
+            gltf_accessor_t accessor = model.accessors[mesh.indices_accessor];
+            m.meshes[i].indexed = true;
+            m.meshes[i].ebo = m.buffers[accessor.view];
+            m.meshes[i].index_count = accessor.count;
+            m.meshes[i].index_offset = accessor.offset;
+            m.meshes[i].index_type = accessor.comp_type;
+        }
+    }
+    glBindVertexArray(0);
+
+    return m;
+}
+
 i32_t main(void) {
     re_init();
     re_arena_t *arena = re_arena_create(GB(4));
@@ -44,7 +145,8 @@ i32_t main(void) {
         return 1;
     }
 
-    gltf_model_t model = gltf_parse("resources/models/box/Box.gltf", arena);
+    gltf_model_t gltf_model = gltf_parse("resources/models/box/Box.gltf", arena);
+    model_t model = gltf_to_model(gltf_model, arena);
 
     gl_shader_t shader = gl_shader_file("resources/shaders/vert.glsl", "resources/shaders/frag.glsl");
 
@@ -52,7 +154,7 @@ i32_t main(void) {
 
     glEnable(GL_DEPTH_TEST);
     while (!glfwWindowShouldClose(window)) {
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         gl_shader_use(&shader);
@@ -60,7 +162,7 @@ i32_t main(void) {
         glUniformMatrix4fv(loc, 1, false, &projection.Elements[0][0]);
 
         HMM_Mat4 translation = HMM_Translate(HMM_V3(0.0f, 0.0f, 2.0f));
-        HMM_Mat4 rotation = HMM_Rotate_LH(re_os_get_time(), HMM_V3(0.0f, 1.0f, 0.0f));
+        HMM_Mat4 rotation = HMM_Rotate_LH(re_os_get_time(), HMM_V3(1.0f, 1.0f, 1.0f));
         HMM_Mat4 scale = HMM_Scale(HMM_V3(1.0f, 1.0f, 1.0f));
 
         HMM_Mat4 transform = HMM_MulM4(translation, rotation);
@@ -69,9 +171,14 @@ i32_t main(void) {
         loc = glGetUniformLocation(shader.handle, "transform");
         glUniformMatrix4fv(loc, 1, false, &transform.Elements[0][0]);
 
-        glBindVertexArray(model.vao);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.ebo);
-        glDrawElements(GL_TRIANGLES, 36, 5123, NULL);
+        glBindVertexArray(model.meshes[0].vao);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.meshes[0].ebo);
+
+        glDrawElements(
+                GL_TRIANGLES,
+                model.meshes[0].index_count,
+                model.meshes[0].index_type,
+                (const void *) model.meshes[0].index_offset);
 
         glfwSwapBuffers(window);
         glfwPollEvents();

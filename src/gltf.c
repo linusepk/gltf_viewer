@@ -8,10 +8,11 @@
 static re_str_t *parse_buffers(const json_object_t *root, re_str_t dir, re_arena_t *arena, u32_t *count) {
     json_object_t buffers = json_object(*root, re_str_lit("buffers"));
 
-    re_str_t *buffs = re_arena_push(arena, buffers.value.array.count * sizeof(re_str_t *));
+    *count = buffers.value.array.count;
+    re_str_t *buffs = re_arena_push(arena, *count * sizeof(re_str_t *));
 
     re_arena_temp_t scratch = re_arena_scratch_get(&arena, 1);
-    for (u32_t i = 0; i < buffers.value.array.count; i++) {
+    for (u32_t i = 0; i < *count; i++) {
         json_object_t buffer = json_array(buffers, i);
         re_str_t uri = json_string(json_object(buffer, re_str_lit("uri")));
 
@@ -25,7 +26,6 @@ static re_str_t *parse_buffers(const json_object_t *root, re_str_t dir, re_arena
     }
 
     re_arena_scratch_release(&scratch);
-    *count = buffers.value.array.count;
 
     return buffs;
 }
@@ -33,8 +33,9 @@ static re_str_t *parse_buffers(const json_object_t *root, re_str_t dir, re_arena
 static gltf_buffer_view_t *parse_views(const json_object_t *root, re_arena_t *arena, u32_t *count) {
     json_object_t json_views = json_object(*root, re_str_lit("bufferViews"));
 
-    gltf_buffer_view_t *views = re_arena_push(arena, json_views.value.array.count * sizeof(gltf_buffer_view_t));
-    for (u32_t i = 0; i < json_views.value.array.count; i++) {
+    *count = json_views.value.array.count;
+    gltf_buffer_view_t *views = re_arena_push(arena, *count * sizeof(gltf_buffer_view_t));
+    for (u32_t i = 0; i < *count; i++) {
         json_object_t view = json_array(json_views, i);
 
         u32_t buffer = json_int(json_object(view, re_str_lit("buffer"))); 
@@ -53,7 +54,7 @@ static gltf_buffer_view_t *parse_views(const json_object_t *root, re_arena_t *ar
             stride = json_int(json_stride);
         }
 
-        gltf_buffer_target target = GLTF_BUFFER_TARGET_NONE;
+        gltf_buffer_target target = 0;
         json_object_t json_target = json_object(view, re_str_lit("target"));
         if (json_offset.type != JSON_TYPE_ERROR) {
             target = json_int(json_target);
@@ -67,7 +68,6 @@ static gltf_buffer_view_t *parse_views(const json_object_t *root, re_arena_t *ar
             target,
         };
     }
-    *count = json_views.value.array.count;
 
     return views;
 }
@@ -75,8 +75,9 @@ static gltf_buffer_view_t *parse_views(const json_object_t *root, re_arena_t *ar
 static gltf_accessor_t *parse_accessors(const json_object_t *root, re_arena_t *arena, u32_t *count) {
     json_object_t json_accs = json_object(*root, re_str_lit("accessors"));
 
-    gltf_accessor_t *accessors = re_arena_push(arena, json_accs.value.array.count * sizeof(gltf_accessor_t));
-    for (u32_t i = 0; i < json_accs.value.array.count; i++) {
+    *count = json_accs.value.array.count;
+    gltf_accessor_t *accessors = re_arena_push(arena, *count * sizeof(gltf_accessor_t));
+    for (u32_t i = 0; i < *count; i++) {
         json_object_t acc = json_array(json_accs, i);
 
         u32_t view = 0;
@@ -124,9 +125,50 @@ static gltf_accessor_t *parse_accessors(const json_object_t *root, re_arena_t *a
         };
     }
 
-    *count = json_accs.value.array.count;
-
     return accessors;
+}
+
+static gltf_mesh_t *parse_meshes(const json_object_t *root, re_arena_t *arena, u32_t *count) {
+    json_object_t json_meshes = json_object(*root, re_str_lit("meshes"));
+
+    *count = json_meshes.value.array.count;
+    gltf_mesh_t *meshes = re_arena_push(arena, *count * sizeof(gltf_mesh_t));
+
+    for (u32_t i = 0; i < *count; i++) {
+        json_object_t json_mesh = json_object(json_array(json_meshes, i), re_str_lit("primitives"));
+        json_mesh = json_array(json_mesh, 0);
+
+        i32_t position = -1;
+        i32_t normal = -1;
+        i32_t uv = -1;
+        json_object_t json_attributes = json_object(json_mesh, re_str_lit("attributes"));
+        for (u32_t attrib = 0; attrib < json_attributes.value.object.count; attrib++) {
+            re_str_t attrib_str = json_attributes.value.object.keys[attrib];
+
+            if (re_str_cmp(attrib_str, re_str_lit("POSITION")) == 0) {
+                position = json_int(json_attributes.value.object.values[attrib]);
+            } else if (re_str_cmp(attrib_str, re_str_lit("NORMAL")) == 0) {
+                normal = json_int(json_attributes.value.object.values[attrib]);
+            } else if (re_str_cmp(attrib_str, re_str_lit("TEXCOORD_0")) == 0) {
+                uv = json_int(json_attributes.value.object.values[attrib]);
+            }
+        }
+
+        i32_t indices = -1;
+        json_object_t json_indices = json_object(json_mesh, re_str_lit("indices"));
+        if (json_indices.type != JSON_TYPE_ERROR) {
+            indices = json_int(json_indices);
+        }
+
+        meshes[i] = (gltf_mesh_t) {
+            position,
+            normal,
+            uv,
+            indices,
+        };
+    }
+
+    return meshes;
 }
 
 gltf_model_t gltf_parse(const char *path, re_arena_t *arena) {
@@ -152,87 +194,26 @@ gltf_model_t gltf_parse(const char *path, re_arena_t *arena) {
     u32_t buffer_count;
     u32_t view_count;
     u32_t accessor_count;
+    u32_t mesh_count;
     re_str_t *buffers = parse_buffers(&json, dir, arena, &buffer_count);
     gltf_buffer_view_t *views = parse_views(&json, arena, &view_count);
     gltf_accessor_t *accessors = parse_accessors(&json, arena, &accessor_count);
-
-    //
-    // Buffer view to GL buffer.
-    //
-    // Meshes are vertex arrays and sometimes index buffers.
-    // Accessors are vertex attributes.
-    // Buffer views are vertex buffers.
-    //
-
-    const u32_t POSITION = 2;
-    const u32_t NORMAL = 1;
-    const u32_t INDICES = 0;
-
-    u32_t ebo;
-    {
-        gltf_accessor_t acc = accessors[INDICES];
-        gltf_buffer_view_t view = views[acc.view];
-        re_str_t buffer = buffers[view.buffer];
-        glGenBuffers(1, &ebo);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-        glBufferData(
-                GL_ELEMENT_ARRAY_BUFFER,
-                view.length,
-                buffer.str + view.offset,
-                GL_STATIC_DRAW);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    }
-
-    u32_t vbo;
-    {
-        gltf_accessor_t acc = accessors[POSITION];
-        gltf_buffer_view_t view = views[acc.view];
-        re_str_t buffer = buffers[view.buffer];
-        glGenBuffers(1, &vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(
-                GL_ARRAY_BUFFER,
-                view.length,
-                buffer.str + view.offset,
-                GL_STATIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-
-    u32_t vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-    // Position
-    {
-        gltf_accessor_t acc = accessors[POSITION];
-        gltf_buffer_view_t view = views[acc.view];
-        u32_t count = 0;
-        switch (acc.type) {
-            case GLTF_ACCESSOR_TYPE_SCALAR: count = 1;  break;
-            case GLTF_ACCESSOR_TYPE_VEC2:   count = 2;  break;
-            case GLTF_ACCESSOR_TYPE_VEC3:   count = 3;  break;
-            case GLTF_ACCESSOR_TYPE_VEC4:   count = 4;  break;
-            case GLTF_ACCESSOR_TYPE_MAT2:   count = 4;  break;
-            case GLTF_ACCESSOR_TYPE_MAT3:   count = 9;  break;
-            case GLTF_ACCESSOR_TYPE_MAT4:   count = 16; break;
-        }
-
-        glVertexAttribPointer(0, count, acc.comp_type, acc.normalized, view.stride, (const void *) (u64_t) acc.offset);
-        glEnableVertexAttribArray(0);
-    }
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    gltf_mesh_t *meshes = parse_meshes(&json, arena, &mesh_count);
 
     json_free(&json);
-
     re_arena_scratch_release(&scratch);
 
     return (gltf_model_t) {
-        .vbo = vbo,
-        .ebo = ebo,
-        .vao = vao,
+        buffers,
+        buffer_count,
+
+        views,
+        view_count,
+
+        accessors,
+        accessor_count,
+
+        meshes,
+        mesh_count,
     };
 }
