@@ -1,11 +1,9 @@
 #version 330 core
 layout (location = 0) in vec3 v_pos;
-layout (location = 1) in vec4 v_color;
 
-out vec4 f_color;
+uniform mat4 projection;
+uniform mat4 transform;
 
 void main() {
-    f_color = v_color;
-
-    gl_Position = vec4(v_pos, 1.0);
+    gl_Position = projection * transform * vec4(v_pos, 1.0) + vec4(0.0, 0.0, -0.0, 0.0);
 }

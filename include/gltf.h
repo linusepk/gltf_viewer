@@ -3,9 +3,9 @@
 #include <rebound.h>
 
 typedef enum {
-    GLTF_BUFFER_TARGET_NONE,
-    GLTF_BUFFER_TARGET_ARRAY,
-    GLTF_BUFFER_TARGET_ELEMENT_ARRAY,
+    GLTF_BUFFER_TARGET_NONE          = 0,
+    GLTF_BUFFER_TARGET_ARRAY         = 34962,
+    GLTF_BUFFER_TARGET_ELEMENT_ARRAY = 34963,
 } gltf_buffer_target;
 
 typedef struct gltf_buffer_view_t gltf_buffer_view_t;
@@ -49,8 +49,13 @@ struct gltf_accessor_t {
 typedef struct gltf_model_t gltf_model_t;
 struct gltf_model_t {
     re_str_t *buffers;
+    u32_t buffer_count;
     gltf_buffer_view_t *views;
+    u32_t view_count;
     gltf_accessor_t *accessors;
+    u32_t accessor_count;
+
+    u32_t vbo, ebo, vao;
 };
 
 extern gltf_model_t gltf_parse(const char *path, re_arena_t *arena);
