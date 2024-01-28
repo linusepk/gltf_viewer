@@ -149,6 +149,7 @@ i32_t main(void) {
     }
 
     // gltf_model_t gltf_model = gltf_parse("resources/models/box/Box.gltf", arena);
+    // gltf_model_t gltf_model = gltf_parse("resources/models/box_interleaved/BoxInterleaved.gltf", arena);
     // gltf_model_t gltf_model = gltf_parse("resources/models/suzanne/Suzanne.gltf", arena);
     // gltf_model_t gltf_model = gltf_parse("resources/models/avocado/Avocado.gltf", arena);
     gltf_model_t gltf_model = gltf_parse("resources/models/damaged_helmet/DamagedHelmet.gltf", arena);
@@ -184,11 +185,25 @@ i32_t main(void) {
 
         f32_t speed = 2.0f;
         f32_t angle = re_os_get_time() * speed;
+        // f32_t angle = RAD(45.0f);
         f32_t distance = 3.0f;
 
-        HMM_Mat4 translation = HMM_Translate(HMM_V3(cosf(angle) * distance, 0.0f, sinf(angle) * distance));
-        HMM_Mat4 rotation = HMM_Rotate_LH(-angle + RAD(90.0f), HMM_V3(0.0f, 1.0f, 0.0f));
+        f32_t up_angle = sinf(re_os_get_time() * 2.0f) * 0.5f;
+        // f32_t up_angle = RAD(45.0f);
+        // f32_t up_angle = 0.0f;
+        // f32_t up_angle = re_os_get_time() * speed;
 
+        f32_t x = cosf(angle + RAD(90)) * cosf(up_angle);
+        f32_t y = -sinf(up_angle);
+        f32_t z = cosf(up_angle) * sinf(angle + RAD(90));
+        HMM_Mat4 translation = HMM_Translate(HMM_MulV3F(HMM_V3(x, y, z), distance));
+        // HMM_Mat4 x_rotation = HMM_Rotate_LH(-angle + RAD(90.0f), HMM_V3(0.0f, 1.0f, 0.0f));
+
+        // HMM_Mat4 translation = HMM_Translate(HMM_V3(0.0f, -sinf(up_angle) * 3.0f, cosf(up_angle) * 3.0f));
+        HMM_Mat4 x_rotation = HMM_Rotate_LH(-angle, HMM_V3(0.0f, 1.0f, 0.0f));
+        HMM_Mat4 y_rotation = HMM_Rotate_LH(up_angle, HMM_V3(1.0f, 0.0f, 0.0f));
+
+        HMM_Mat4 rotation = HMM_MulM4(y_rotation, x_rotation);
         HMM_Mat4 view = HMM_MulM4(rotation, translation);
 
         gl_shader_use(&shader);
@@ -200,7 +215,6 @@ i32_t main(void) {
 
         {
             HMM_Mat4 translation = HMM_Translate(HMM_V3(0.0f, 0.0f, 0.0f));
-            // HMM_Mat4 rotation = HMM_Rotate_LH(re_os_get_time() * speed, HMM_V3(0.0f, 1.0f, 0.0f));
             HMM_Mat4 rotation = HMM_QToM4(HMM_Q(0.7f, 0.0f, 0.0f, 0.7f));
             // HMM_Mat4 rotation = HMM_M4D(1.0f);
             HMM_Mat4 scale = HMM_Scale(HMM_MulV3F(HMM_V3(1.0f, 1.0f, 1.0f), 1.0f));
