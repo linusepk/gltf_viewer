@@ -139,6 +139,8 @@ i32_t main(void) {
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, resize_callback);
 
+    glfwSwapInterval(0);
+
     if (!gladLoadGL(glfwGetProcAddress)) {
         re_log_error("Failed load gl functions using GLAD.");
         glfwDestroyWindow(window);
@@ -156,11 +158,29 @@ i32_t main(void) {
 
     HMM_Mat4 projection = HMM_Perspective_LH_NO(90.0f, 800.0f/600.0f, 0.1f, 10.0f);
 
+    f32_t last = re_os_get_time();
+    f32_t dt = 0.0f;
+    f32_t curr = 0.0f;
+
+    f32_t fps_timer = 0.0f;
+    u32_t fps = 0;
 
     glEnable(GL_DEPTH_TEST);
     while (!glfwWindowShouldClose(window)) {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        curr = re_os_get_time();
+        dt = curr - last;
+        last = curr;
+
+        fps++;
+        fps_timer += dt;
+        if (fps_timer >= 1.0f) {
+            re_log_info("FPS: %d", fps);
+            fps_timer = 0.0f;
+            fps = 0;
+        }
 
         f32_t speed = 2.0f;
         f32_t angle = re_os_get_time() * speed;
@@ -200,27 +220,6 @@ i32_t main(void) {
                     model.meshes[0].index_type,
                     (const void *) model.meshes[0].index_offset);
         }
-
-        // {
-        //     HMM_Mat4 translation = HMM_Translate(HMM_V3(-1.0f, 0.0f, 3.0f));
-        //     HMM_Mat4 rotation = HMM_Rotate_LH(re_os_get_time(), HMM_V3(1.0f, 1.0f, 0.0f));
-        //     HMM_Mat4 scale = HMM_Scale(HMM_MulV3F(HMM_V3(1.0f, 1.0f, 1.0f), 25.0f));
-        //
-        //     HMM_Mat4 transform = HMM_MulM4(translation, rotation);
-        //     transform = HMM_MulM4(transform, scale);
-        //
-        //     loc = glGetUniformLocation(shader.handle, "transform");
-        //     glUniformMatrix4fv(loc, 1, false, &transform.Elements[0][0]);
-        //
-        //     glBindVertexArray(avo.meshes[0].vao);
-        //     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, avo.meshes[0].ebo);
-        //
-        //     glDrawElements(
-        //             GL_TRIANGLES,
-        //             avo.meshes[0].index_count,
-        //             avo.meshes[0].index_type,
-        //             (const void *) avo.meshes[0].index_offset);
-        // }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
