@@ -70,17 +70,21 @@ static void set_vertex_attribute(gltf_model_t model, u32_t *buffers, i32_t acces
 model_t gltf_to_model(gltf_model_t model, re_arena_t *arena) {
     model_t m = {0};
 
+    m.meshes = re_arena_push(arena, model.mesh_count * sizeof(mesh_t));
+    m.vaos = re_arena_push(arena, model.mesh_count * sizeof(u32_t));
+    m.buffers = re_arena_push(arena, model.view_count * sizeof(u32_t));
+
     m.vao_count = model.mesh_count;
     m.buffer_count = model.view_count;
 
-    m.buffers = re_arena_push(arena, m.buffer_count * sizeof(u32_t));
-    m.vaos = re_arena_push(arena, m.vao_count * sizeof(u32_t));
-    m.meshes = re_arena_push(arena, m.vao_count * sizeof(u32_t));
+    glGenVertexArrays(model.mesh_count, m.vaos);
+    glGenBuffers(model.view_count, m.buffers);
 
-    glGenBuffers(m.buffer_count, m.buffers);
-    glGenVertexArrays(m.vao_count, m.vaos);
+    for (u32_t i = 0; i < model.view_count; i++) {
+        if (model.views[i].target == 0) {
+            continue;
+        }
 
-    for (u32_t i = 0; i < m.buffer_count; i++) {
         gltf_buffer_view_t view = model.views[i];
         re_str_t buffer = model.buffers[view.buffer];
 
@@ -89,25 +93,22 @@ model_t gltf_to_model(gltf_model_t model, re_arena_t *arena) {
         glBindBuffer(view.target, 0);
     }
 
-    for (u32_t i = 0; i < m.vao_count; i++) {
-        u32_t vao = m.vaos[i];
-        glBindVertexArray(vao);
+    for (u32_t i = 0; i < model.mesh_count; i++) {
+        m.meshes[i].vao = m.vaos[i];
+        glBindVertexArray(m.vaos[i]);
 
-        gltf_mesh_t mesh = model.meshes[i];
+        set_vertex_attribute(model, m.buffers, model.meshes[i].position_accessor, 0);
+        set_vertex_attribute(model, m.buffers, model.meshes[i].normal_accessor, 1);
+        set_vertex_attribute(model, m.buffers, model.meshes[i].uv_accessor, 2);
 
-        // Position
-        set_vertex_attribute(model, m.buffers, mesh.position_accessor, 0);
-        set_vertex_attribute(model, m.buffers, mesh.normal_accessor, 1);
-        set_vertex_attribute(model, m.buffers, mesh.uv_accessor, 2);
+        if (model.meshes[i].indices_accessor != -1) {
+            gltf_accessor_t acc = model.accessors[model.meshes[i].indices_accessor];
 
-        m.meshes[i].vao = vao;
-        if (mesh.indices_accessor >= 0) {
-            gltf_accessor_t accessor = model.accessors[mesh.indices_accessor];
             m.meshes[i].indexed = true;
-            m.meshes[i].ebo = m.buffers[accessor.view];
-            m.meshes[i].index_count = accessor.count;
-            m.meshes[i].index_offset = accessor.offset;
-            m.meshes[i].index_type = accessor.comp_type;
+            m.meshes[i].ebo = m.buffers[acc.view];
+            m.meshes[i].index_count = acc.count;
+            m.meshes[i].index_offset = acc.offset;
+            m.meshes[i].index_type = acc.comp_type;
         }
     }
     glBindVertexArray(0);
@@ -146,7 +147,8 @@ i32_t main(void) {
     }
 
     // TODO: Infer bufferView target from accessors so we can have fresh avocado.
-    gltf_model_t gltf_model = gltf_parse("resources/models/suzanne/Suzanne.gltf", arena);
+    // gltf_model_t gltf_model = gltf_parse("resources/models/suzanne/Suzanne.gltf", arena);
+    gltf_model_t gltf_model = gltf_parse("resources/models/avocado/Avocado.gltf", arena);
     model_t model = gltf_to_model(gltf_model, arena);
 
     gl_shader_t shader = gl_shader_file("resources/shaders/vert.glsl", "resources/shaders/frag.glsl");
@@ -163,8 +165,8 @@ i32_t main(void) {
         glUniformMatrix4fv(loc, 1, false, &projection.Elements[0][0]);
 
         HMM_Mat4 translation = HMM_Translate(HMM_V3(0.0f, 0.0f, 3.0f));
-        HMM_Mat4 rotation = HMM_Rotate_LH(re_os_get_time(), HMM_V3(0.0f, 1.0f, 0.0f));
-        HMM_Mat4 scale = HMM_Scale(HMM_V3(1.0f, 1.0f, 1.0f));
+        HMM_Mat4 rotation = HMM_Rotate_LH(re_os_get_time(), HMM_V3(1.0f, 1.0f, 0.0f));
+        HMM_Mat4 scale = HMM_Scale(HMM_MulV3F(HMM_V3(1.0f, 1.0f, 1.0f), 25.0f));
 
         HMM_Mat4 transform = HMM_MulM4(translation, rotation);
         transform = HMM_MulM4(transform, scale);

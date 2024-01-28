@@ -171,6 +171,27 @@ static gltf_mesh_t *parse_meshes(const json_object_t *root, re_arena_t *arena, u
     return meshes;
 }
 
+static void set_target(gltf_model_t *model, gltf_mesh_t mesh, u32_t accessor, gltf_buffer_target target) {
+    if (accessor == -1) {
+        return;
+    }
+
+    gltf_buffer_view_t *view = &model->views[model->accessors[accessor].view];
+    if (view->target == 0) {
+        view->target = target;
+    }
+}
+
+static void gltf_infer_buffer_view_target(gltf_model_t *model) {
+    for (u32_t i = 0; i < model->mesh_count; i++) {
+        gltf_mesh_t mesh = model->meshes[i];
+        set_target(model, mesh, mesh.position_accessor, GLTF_BUFFER_TARGET_ARRAY);
+        set_target(model, mesh, mesh.normal_accessor, GLTF_BUFFER_TARGET_ARRAY);
+        set_target(model, mesh, mesh.uv_accessor, GLTF_BUFFER_TARGET_ARRAY);
+        set_target(model, mesh, mesh.indices_accessor, GLTF_BUFFER_TARGET_ELEMENT_ARRAY);
+    }
+}
+
 gltf_model_t gltf_parse(const char *path, re_arena_t *arena) {
     re_arena_temp_t scratch = re_arena_scratch_get(&arena, 1);
 
@@ -203,7 +224,7 @@ gltf_model_t gltf_parse(const char *path, re_arena_t *arena) {
     json_free(&json);
     re_arena_scratch_release(&scratch);
 
-    return (gltf_model_t) {
+    gltf_model_t model = {
         buffers,
         buffer_count,
 
@@ -216,4 +237,8 @@ gltf_model_t gltf_parse(const char *path, re_arena_t *arena) {
         meshes,
         mesh_count,
     };
+
+    gltf_infer_buffer_view_target(&model);
+
+    return model;
 }
